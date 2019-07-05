@@ -1,0 +1,310 @@
+syntax = "proto3";
+
+option go_package = "pusherpb";
+option java_package = "one.pxn.proto";
+option java_outer_classname = "PXNProtos";
+option swift_prefix = "PXN";
+
+import "google/protobuf/timestamp.proto";
+
+message Request {
+    string request_id = 1;
+
+    oneof payload {
+        HeartbeatRequest heartbeat_request = 200;
+
+        Ping ping = 100;
+        SubscribeMarketsTickerRequest subscribe_markets_ticker_request = 101;
+        SubscribeMarketTradesRequest subscribe_market_trades_request = 102;
+        SubscribeMarketDepthRequest subscribe_market_depth_request = 103;
+        SubscribeMarketCandlesRequest subscribe_market_candles_request = 104;
+        SubscribeViewerAccountsRequest subscribe_viewer_accounts_request = 105;
+        SubscribeViewerOrdersRequest subscribe_viewer_orders_request = 106;
+        UnsubscribeMarketsTickerRequest unsubscribe_markets_ticker_request = 107;
+        UnsubscribeMarketTradesRequest unsubscribe_market_trades_request = 108;
+        UnsubscribeMarketDepthRequest unsubscribe_market_depth_request = 109;
+        UnsubscribeMarketCandlesRequest unsubscribe_market_candles_request = 110;
+        UnsubscribeViewerAccountsRequest unsubscribe_viewer_accounts_request = 111;
+        UnsubscribeViewerOrdersRequest unsubscribe_viewer_orders_request = 112;
+        AuthenticateCustomerRequest authenticate_customer_request = 113;
+        CreateOrderRequest create_order_request = 114;
+        CancelOrderRequest cancel_order_request = 115;
+        CancelAllOrdersRequest cancel_all_orders_request = 116;
+        ListMarketsRequest list_markets_request = 117;
+    }
+}
+
+message Response {
+    string request_id = 1;
+
+    oneof payload {
+        Success success = 98;
+        Error error = 99;
+        Pong pong = 100;
+        Heartbeat heartbeat = 200;
+
+        TickersSnapshot tickers_snapshot = 101;
+        TickerUpdate ticker_update = 102;
+
+        TradesSnapshot trades_snapshot = 103;
+        TradeUpdate trade_update = 104;
+
+        DepthSnapshot depth_snapshot = 105;
+        DepthUpdate depth_update = 106;
+
+        AccountsSnapshot accounts_snapshot = 107;
+        AccountUpdate account_update = 108;
+
+        CandlesSnapshot candles_snapshot = 109;
+        CandleUpdate candle_update = 110;
+
+        OrdersSnapshot orders_snapshot = 111;
+        OrderUpdate order_update = 112;
+
+        ListMarketsResponse list_markets_response = 113;
+    }
+}
+
+message Error {
+    int64 code = 1;
+    string message = 2;
+}
+
+message Success {
+    bool ok = 1;
+}
+
+message HeartbeatRequest {
+    uint64 interval = 1; // second
+}
+
+message Heartbeat {}
+message Ping {}
+message Pong {}
+
+message Market {
+    string name = 1;
+    string base_asset = 2;
+    string quote_asset = 3;
+    uint32 base_scale = 4;
+    uint32 quote_scale = 5;
+    string min_quote_value = 6;
+}
+
+message PriceLevel {
+    string price = 1;
+    string amount = 2;
+    int64 order_count = 3;
+}
+
+message Depth {
+    string market = 1;
+    repeated PriceLevel asks = 2;
+    repeated PriceLevel bids = 3;
+}
+
+message Ticker {
+    string market = 1;
+    PriceLevel ask = 2;
+    PriceLevel bid = 3;
+    string open = 4;
+    string high = 5;
+    string low = 6;
+    string close = 7;
+    string volume = 8;
+    string dailyChange = 9;
+    string dailyChangePerc = 10;
+}
+
+message Trade {
+    uint64 id = 1;
+    string price = 2;
+    string amount = 3;
+    string market = 4;
+    google.protobuf.Timestamp created_at = 7;
+
+    Order maker_order = 9;
+    Order taker_order = 10;
+}
+
+message Order {
+    enum Side {
+        BID = 0;
+        ASK = 1;
+    }
+
+    enum State {
+        PENDING = 0;
+        FILLED = 1;
+        CANCELLED = 2;
+    }
+
+    string id = 1;
+    string price = 2; // decimal or "MARKET"
+    string stop_price = 3; // decimal or empty
+    string amount = 4; // decimal non null
+    string market = 5; // market name
+    Side side = 6;
+    State state = 7;
+    string filled_amount = 8; // decimal
+    string filled_fees = 9; // decimal
+    string avg_deal_price = 10; // decimal
+    google.protobuf.Timestamp created_at = 11;
+    google.protobuf.Timestamp updated_at = 12;
+}
+
+message Account {
+    string asset = 1; // asset symbol
+    string balance = 2;
+    string locked_balance = 3;
+}
+
+message Candle {
+    enum Period {
+        MIN1 = 0;
+        MIN5 = 1;
+        MIN15 = 2;
+        MIN30 = 3;
+        HOUR1 = 4;
+        HOUR3 = 5;
+        HOUR4 = 6;
+        HOUR6 = 7;
+        HOUR12 = 8;
+        DAY1 = 9;
+        WEEK1 = 10;
+    }
+
+    string market = 1;
+    google.protobuf.Timestamp time = 2;
+    string open = 3;
+    string high = 4;
+    string low = 5;
+    string close = 6;
+    string volume = 7;
+    Period period = 8;
+}
+
+message SubscribeMarketsTickerRequest {
+    repeated string markets = 1; // list of market name, empty means subscribing all markets
+}
+
+message SubscribeMarketTradesRequest {
+    string market = 1;
+    int64 limit = 2;
+}
+
+message SubscribeMarketDepthRequest {
+    string market = 1;
+}
+
+message SubscribeMarketCandlesRequest {
+    string market = 1;
+    Candle.Period period = 2;
+    int64 limit = 3;
+}
+
+message SubscribeViewerAccountsRequest {}
+message SubscribeViewerOrdersRequest {
+    string market = 1;
+}
+
+message UnsubscribeMarketsTickerRequest {
+    repeated string markets = 1; // list of market name, empty means unsubscribing all markets
+}
+
+message UnsubscribeMarketTradesRequest {
+    string market = 1;
+}
+
+message UnsubscribeMarketDepthRequest {
+    string market = 1;
+}
+
+message UnsubscribeMarketCandlesRequest {
+    string market = 1;
+    Candle.Period period = 2;
+}
+
+message UnsubscribeViewerAccountsRequest {}
+
+message UnsubscribeViewerOrdersRequest {
+    string market = 1;
+}
+
+message AuthenticateCustomerRequest {
+    string token = 1;
+}
+
+message CreateOrderRequest {
+    string price = 1; // decimal or "MARKET"
+    string stop_price = 2; // decimal or empty
+    string amount = 3; // decimal non null
+    string market = 4; // market name
+    Order.Side side = 5;
+    bool hidden = 6;
+    bool immediate_or_cancel = 7;
+}
+
+message CancelOrderRequest {
+    string order_id = 1;
+}
+
+message CancelAllOrdersRequest {
+    repeated string markets = 1; // list of market name, empty means cancel all markets' orders
+}
+
+message ListMarketsRequest {}
+
+message TickersSnapshot {
+    repeated Ticker tickers = 1;
+}
+
+message TickerUpdate{
+    Ticker ticker = 1;
+}
+
+message TradesSnapshot {
+    repeated Trade trades = 1;
+}
+
+message TradeUpdate {
+    Trade trade = 1;
+}
+
+message DepthSnapshot {
+    Depth depth = 1;
+    uint64 change_id = 2;
+}
+
+message DepthUpdate {
+    Depth depth = 1;
+    uint64 change_id = 2;
+}
+
+message AccountsSnapshot {
+    repeated Account accounts = 1;
+}
+
+message AccountUpdate {
+    Account account = 1;
+}
+
+message CandlesSnapshot {
+    repeated Candle candles = 1;
+}
+
+message CandleUpdate {
+    Candle candle = 1;
+}
+
+message OrdersSnapshot {
+    repeated Order orders = 1;
+}
+
+message OrderUpdate {
+    Order order = 1;
+}
+
+message ListMarketsResponse {
+    repeated Market markets = 1;
+}
