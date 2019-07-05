@@ -1,11 +1,14 @@
 package exchanges
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	mm "github.com/qinix/cckit/market_monitor"
 
 	pxnpb "github.com/qinix/cckit/exchanges/pxn/pusherpb"
@@ -49,7 +52,8 @@ func (b *BigoneImp) Monitor() *mm.Exchange {
 func (b *BigoneImp) Start() {
 	b.marketReloadTicker = time.NewTicker(10 * time.Minute)
 	var err error
-	b.conn, _, err = websocket.DefaultDialer.Dial("wss://big.one/ws/v2", http.Header{"Sec-WebSocket-Protocol": []string{"protobuf"}})
+	dialer := websocket.Dialer{Subprotocols: []string{"protobuf", "json"}}
+	b.conn, _, err = dialer.Dial("wss://big.one/ws/v2", nil)
 	if err != nil {
 		log.Fatal("dial: ", err)
 	}
@@ -57,8 +61,15 @@ func (b *BigoneImp) Start() {
 	go func() {
 		for {
 			_, message, err := b.conn.ReadMessage()
+			if err != nil {
+				log.Fatal("readMessage: ", err)
+			}
 			var response pxnpb.Response
-			err = proto.Unmarshal(message, &response)
+			if b.conn.Subprotocol() == "json" {
+				err = (&jsonpb.Unmarshaler{AllowUnknownFields: true}).Unmarshal(bytes.NewReader(message), &response)
+			} else {
+				err = proto.Unmarshal(message, &response)
+			}
 			if err != nil {
 				log.Fatal("unmarshaling error: ", err)
 			}
@@ -88,39 +99,47 @@ func (b *BigoneImp) loadNewMarkets() {
 
 func (b *BigoneImp) subscribeMarket(m bigoneMarket) {
 	request1 := &pxnpb.Request{
-		RequestId: string(time.Now().UnixNano()),
+		RequestId: strconv.FormatInt(time.Now().UnixNano(), 10),
 		Payload: &pxnpb.Request_SubscribeMarketDepthRequest{
 			SubscribeMarketDepthRequest: &pxnpb.SubscribeMarketDepthRequest{
 				Market: m.ID,
 			},
 		},
 	}
-	data1, err := proto.Marshal(request1)
-	if err != nil {
-		log.Fatal("marshaling error: ", err)
-	}
-	err = b.conn.WriteMessage(websocket.BinaryMessage, data1)
-	if err != nil {
-		log.Fatal("writeMessage: ", err)
-	}
+	b.writeRequest(request1)
 
 	request2 := &pxnpb.Request{
-		RequestId: string(time.Now().UnixNano()),
+		RequestId: strconv.FormatInt(time.Now().UnixNano(), 10),
 		Payload: &pxnpb.Request_SubscribeMarketTradesRequest{
 			SubscribeMarketTradesRequest: &pxnpb.SubscribeMarketTradesRequest{
 				Market: m.ID,
 			},
 		},
 	}
-	data2, err := proto.Marshal(request2)
-	if err != nil {
-		log.Fatal("marshaling error: ", err)
-	}
-	err = b.conn.WriteMessage(websocket.BinaryMessage, data2)
-	if err != nil {
-		log.Fatal("writeMessage: ", err)
-	}
+	b.writeRequest(request2)
+}
 
+func (b *BigoneImp) writeRequest(r *pxnpb.Request) {
+	if b.conn.Subprotocol() == "json" {
+		var buf bytes.Buffer
+		err := new(jsonpb.Marshaler).Marshal(&buf, r)
+		if err != nil {
+			log.Fatal("marshaling error: ", err)
+		}
+		err = b.conn.WriteMessage(websocket.TextMessage, buf.Bytes())
+		if err != nil {
+			log.Fatal("writeMessage: ", err)
+		}
+	} else {
+		data, err := proto.Marshal(r)
+		if err != nil {
+			log.Fatal("marshaling error: ", err)
+		}
+		err = b.conn.WriteMessage(websocket.BinaryMessage, data)
+		if err != nil {
+			log.Fatal("writeMessage: ", err)
+		}
+	}
 }
 
 func (b *BigoneImp) getMarkets() (markets []bigoneMarket) {
@@ -135,11 +154,11 @@ func (b *BigoneImp) getMarkets() (markets []bigoneMarket) {
 			Name       string
 			QuoteAsset struct {
 				Symbol string
-			}
+			} `json:"quote_asset"`
 			BaseAsset struct {
 				Symbol string
-			}
-		}
+			} `json:"base_asset"`
+		} `json:"data"`
 	}
 
 	err = json.NewDecoder(res.Body).Decode(&response)
@@ -171,7 +190,7 @@ func (b *BigoneImp) handleMessage(resp pxnpb.Response) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		b.monitor.Market(market.Base, market.Quote).NewTrade(mm.Trade{Time: time, Price: decimal.RequireFromString(trade.Price), Amount: decimal.RequireFromString(trade.Amount), IsBuyerMaker: (trade.MakerOrder.Side == pxnpb.Order_BID)})
+		b.monitor.Market(market.Base, market.Quote).NewTrade(mm.Trade{Time: time, Price: decimal.RequireFromString(trade.Price), Amount: decimal.RequireFromString(trade.Amount), IsBuyerMaker: (trade.TakerOrder.Side == pxnpb.Order_ASK)})
 	default:
 	}
 }
