@@ -11,3 +11,5 @@ require (
 	github.com/stretchr/testify v1.2.2
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 )
+
+replace github.com/emirpasic/gods v1.12.0 => github.com/qinix/gods v1.12.1-0.20190629191224-679f58fa88f8
