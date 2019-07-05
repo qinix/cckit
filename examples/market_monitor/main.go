@@ -14,11 +14,12 @@ func main() {
 
 	// exchanges.OKEx.Start()
 	// exchanges.Binance.Start()
-	exchanges.BigONE.Start()
+	// exchanges.BigONE.Start()
+	exchanges.Coinall.Start()
 
 	go func() {
 		for {
-			m := exchanges.BigONE.Monitor().Market("BTC", "USDT")
+			m := exchanges.Coinall.Monitor().Market("PVT", "USDT")
 			if m != nil {
 				// log.Info(m.Depth.Snapshot())
 				log.Info("midprice: ", m.Price())

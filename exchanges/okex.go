@@ -29,11 +29,13 @@ type OkexImp struct {
 	instrumentidToMarket map[string]okexMarket
 	marketReloadTicker   *time.Ticker
 	rwMutex              sync.RWMutex
+	baseURL              string
 }
 
 var OKEx = OkexImp{
 	monitor:              mm.NewExchange(),
 	instrumentidToMarket: make(map[string]okexMarket),
+	baseURL:              "https://www.okex.com",
 }
 
 func init() {
@@ -216,7 +218,7 @@ func (o *OkexImp) subscribeChunkedMarkets(chunk []okexMarket) {
 }
 
 func (o *OkexImp) getMarkets() (markets []okexMarket) {
-	res, err := http.Get("https://www.okex.com/api/spot/v3/instruments")
+	res, err := http.Get(o.baseURL + "/api/spot/v3/instruments")
 	if err != nil {
 		log.Error(err)
 		return
