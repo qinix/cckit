@@ -12,13 +12,13 @@ import (
 func main() {
 	log.SetReportCaller(true)
 
-	// exchanges.Okex.Start()
+	// exchanges.OKEx.Start()
 	// exchanges.Binance.Start()
-	exchanges.Bigone.Start()
+	exchanges.BigONE.Start()
 
 	go func() {
 		for {
-			m := exchanges.Bigone.Monitor().Market("BTC", "USDT")
+			m := exchanges.BigONE.Monitor().Market("BTC", "USDT")
 			if m != nil {
 				// log.Info(m.Depth.Snapshot())
 				log.Info("midprice: ", m.Price())

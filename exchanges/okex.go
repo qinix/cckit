@@ -31,13 +31,13 @@ type OkexImp struct {
 	rwMutex              sync.RWMutex
 }
 
-var Okex = OkexImp{
+var OKEx = OkexImp{
 	monitor:              mm.NewExchange(),
 	instrumentidToMarket: make(map[string]okexMarket),
 }
 
 func init() {
-	Register("okex", &Okex)
+	Register("okex", &OKEx)
 }
 
 type okexMarket struct {
@@ -52,7 +52,9 @@ func (o *OkexImp) Monitor() *mm.Exchange {
 
 func (o *OkexImp) Start() {
 	o.marketReloadTicker = time.NewTicker(10 * time.Minute)
-	Okex.wsPool = utils.NewWebsocketPool(func(messageType int, message []byte, err error) { Okex.handleMessage(messageType, message, err) })
+	o.wsPool = utils.NewWebsocketPool(func(messageType int, message []byte, err error) {
+		(*OkexImp).handleMessage(o, messageType, message, err)
+	})
 
 	go func() {
 		o.loadNewMarkets()
