@@ -53,7 +53,7 @@ func (b *PxnImp) Monitor() *mm.Exchange {
 func (b *PxnImp) Start() {
 	b.marketReloadTicker = time.NewTicker(10 * time.Minute)
 	var err error
-	dialer := websocket.Dialer{Subprotocols: []string{"protobuf", "json"}}
+	dialer := websocket.Dialer{Subprotocols: []string{"proto"}}
 	b.conn, _, err = dialer.Dial("wss://"+b.domain+"/ws/v2", nil)
 	if err != nil {
 		log.Fatal("dial: ", err)
